@@ -1,0 +1,20 @@
+#SkyPilot YAML to run stable diffusion web tool on 1 V100 GPU.
+
+resources:
+  accelerators: V100:1
+
+file_mounts:
+  /stable_diffusion: .
+
+setup: |
+  sudo curl -L "https://github.com/docker/compose/releases/download/v2.18.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  sudo chmod +x /usr/local/bin/docker-compose
+  cd stable-diffusion-webui-docker  
+  sudo rm -r stable-diffusion-webui-docker
+  git clone https://github.com/AbdBarho/stable-diffusion-webui-docker.git
+  cd stable-diffusion-webui-docker
+  docker-compose --profile download up --build
+
+run: |
+  cd stable-diffusion-webui-docker
+  docker-compose --profile auto up --build
