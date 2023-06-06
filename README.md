@@ -1,2 +1,1 @@
-# my-skypilot
-my skypilot AI workloads
+# llm-learning

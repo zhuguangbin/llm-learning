@@ -1,9 +1,9 @@
 resources:
-  cloud: gcp
-#  region: us-east4
+  cloud: aws
+#  region: us-east-2
   accelerators: V100:1
   disk_size: 500
-  use_spot: true
+  # use_spot: true
   # Note: The disk_tier option is not offered in skypilot<=0.2.5, we need
   # to install SkyPilot from source.
   disk_tier: high
@@ -14,7 +14,8 @@ file_mounts:
   /artifacts:
     name: vicuna-finetuning-zhuguangbin # Change to your own bucket name
     mode: MOUNT
-  /data/mydata.json: ./dummy.json
+  #/data/mydata.json: ./dummy.json
+  /data/mydata.json: ./ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json
 
 setup: |
   # Setup the environment
