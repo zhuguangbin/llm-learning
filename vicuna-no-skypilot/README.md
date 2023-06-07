@@ -295,15 +295,16 @@ torchrun --nproc_per_node=4 --master_port=20001 fastchat/train/train_mem.py \
 
 报错：
 ```
-Token indices sequence length is longer than the specified maximum sequence length for this model (79595 > 2048). Running this sequence through the model will result in indexing errors
+IndexError: list index out of range
 ```
 
-因为训练样本中数据token偏大，调整per_device_train_batch_size/per_device_eval_batch_size/model_max_length:
+因为训练样本中数据有空conversation以及from值非法数据(去除非"human"和"gpt"的数据，如"system"/"bing"等)，预处理脚本参考clean.py，得到新的数据集ShareGPT_filtered.json
+
 
 ```
 torchrun --nproc_per_node=4 --master_port=20001 fastchat/train/train_mem.py \
     --model_name_or_path huggyllama/llama-7b  \
-    --data_path ~/ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json \
+    --data_path ~/ShareGPT_filtered.json \
     --bf16 True \
     --output_dir ./vicuna-7b-finetuned \
     --num_train_epochs 3 \
@@ -322,74 +323,7 @@ torchrun --nproc_per_node=4 --master_port=20001 fastchat/train/train_mem.py \
     --fsdp "full_shard auto_wrap" \
     --fsdp_transformer_layer_cls_to_wrap 'LlamaDecoderLayer' \
     --tf32 True \
-    --model_max_length 204800 \
+    --model_max_length 2048 \
     --gradient_checkpointing True \
     --lazy_preprocess True
 ```
-
-CUDA OOM: 
-```
-OutOfMemoryError: CUDA out of memory. Tried to allocate 31.25 GiB (GPU 2; 79.15 GiB total capacity; 54.11 GiB already allocated; 22.95 GiB
-free; 54.66 GiB reserved in total by PyTorch) If reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation.
-See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
-```
-
-开启cpu offload：
-```
-torchrun --nproc_per_node=4 --master_port=20001 fastchat/train/train_mem.py \
-    --model_name_or_path huggyllama/llama-7b  \
-    --data_path ~/ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json \
-    --bf16 True \
-    --output_dir ./vicuna-7b-finetuned \
-    --num_train_epochs 3 \
-    --per_device_train_batch_size 10 \
-    --per_device_eval_batch_size 10 \
-    --gradient_accumulation_steps 16 \
-    --evaluation_strategy "no" \
-    --save_strategy "steps" \
-    --save_steps 1200 \
-    --save_total_limit 10 \
-    --learning_rate 2e-5 \
-    --weight_decay 0. \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
-    --fsdp "full_shard auto_wrap offload" \
-    --fsdp_transformer_layer_cls_to_wrap 'LlamaDecoderLayer' \
-    --tf32 True \
-    --model_max_length 204800 \
-    --gradient_checkpointing True \
-    --lazy_preprocess True
-```
-
-无效，继续降低batch_size：
-
-```
-torchrun --nproc_per_node=4 --master_port=20001 fastchat/train/train_mem.py \
-    --model_name_or_path huggyllama/llama-7b  \
-    --data_path ~/ShareGPT_V3_unfiltered_cleaned_split_no_imsorry.json \
-    --bf16 True \
-    --output_dir ./vicuna-7b-finetuned \
-    --num_train_epochs 3 \
-    --per_device_train_batch_size 2 \
-    --per_device_eval_batch_size 2 \
-    --gradient_accumulation_steps 16 \
-    --evaluation_strategy "no" \
-    --save_strategy "steps" \
-    --save_steps 1200 \
-    --save_total_limit 10 \
-    --learning_rate 2e-5 \
-    --weight_decay 0. \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
-    --fsdp "full_shard auto_wrap offload" \
-    --fsdp_transformer_layer_cls_to_wrap 'LlamaDecoderLayer' \
-    --tf32 True \
-    --model_max_length 204800 \
-    --gradient_checkpointing True \
-    --lazy_preprocess True
-```
-
-仍然CUDA OOM，根据`https://github.com/pytorch/pytorch/issues/98823`，调整：
-
